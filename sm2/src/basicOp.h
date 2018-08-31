@@ -3,9 +3,10 @@
 
 #include "dataType.h"
 
-void u32_and		(const u32 & a, const u32 & b, u32 & result);
-void u32_or			(const u32 & a, const u32 & b, u32 & result);
-void u32_xor		(const u32 & a, const u32 & b, u32 & result);
+// void u32_and		(const u32 & a, const u32 & b, u32 & result);
+// void u32_or			(const u32 & a, const u32 & b, u32 & result);
+// void u32_xor		(const u32 & a, const u32 & b, u32 & result);
+
 bool u32_add		(const u32 & a, const u32 & b, u32 & result);
 void u32_sub		(const u32 & a, const u32 & b, u32 & result);
 

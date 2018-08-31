@@ -28,7 +28,7 @@ void test_raw_mul()
 	u32 a = {0x1351534EF350E2BB, 0x14E68D77BC131F7B, 0x6A7171A01A638E75, 0x4F9EA7A816AB7908};
 	u32 b = {0x141CC66D0595B6F0, 0xC85BF76622E07301, 0x5B261629F8AD4D45, 0x7DE9CF63BC635636};
 	u8 rst[8];
-	raw_multiply(a, b, rst);
+	raw_mul(a, b, rst);
 	u8 realrst[8] = { 0x866d99203adc8150, 0xc623d9758ed1332c, 0x3b1dab20b950e375, 0xbc165cad5d713996,
 		0x63e9be904aa539b5, 0x7edc6525c6a1f17c, 0x2a99a65d2ec61248, 0x27292fc3f99184ca };
 	bool flag = 0;
@@ -47,12 +47,12 @@ void bench_raw_mul()
 {
 	u32 a, b;
 	u8 rst[8];
-	rand_element(a);
-	rand_element(b);
+	u32_rand(a);
+	u32_rand(b);
 
 	clock_t start, end;
 	start = clock();
-	raw_multiply(a, b, rst);
+	raw_mul(a, b, rst);
 	end = clock();
 	printf("bench_raw_mul time=%f s\n", (double)(end - start) / CLK_TCK);
 }
@@ -93,8 +93,8 @@ void test_multiply()
 void bench_mul()
 {
 	u32 a, b, c;
-	rand_element(a);
-	rand_element(b);
+	u32_rand(a);
+	u32_rand(b);
 
 	clock_t start, end;
 	start = clock();
@@ -106,11 +106,12 @@ void bench_mul()
 void test_inversion()
 {
 	u32 a, b, res;
-	rand_element(a);
-	inverse_for_multiplying_mod_p(a, b);
+	u32_rand(a);
+	inv_for_mul_mod_p(a, b);
 	u32 newn = {1, 0, 0, 0};
 	mul_mod_p(a, b, res);
-	if (!u32_eq(res, newn)){
+	if (!u32_eq(res, newn))
+	{
 		printf("inversion error!\n");
 	}
 	else{
@@ -121,10 +122,10 @@ void test_inversion()
 void bench_inversion()
 {
 	u32 a, b;
-	rand_element(a);
+	u32_rand(a);
 	clock_t start, end;
 	start = clock();
-	inverse_for_multiplying_mod_p(a, b);
+	inv_for_mul_mod_p(a, b);
 	end = clock();
 	printf("bench_inversion time=%f s\n", (double)(end - start) / CLK_TCK);
 }
@@ -182,7 +183,7 @@ void test_times3()
 void test_BaseTimes()
 {
 	u32 r;
-	rand_element(r);
+	u32_rand(r);
 	jacobian_point S1, S2;
 	times_point(G, r, S1);
 	gen_tables();
@@ -199,7 +200,7 @@ void bench_times()
 {
 	u32 r;
 	jacobian_point S1;
-	rand_element(r);
+	u32_rand(r);
 	clock_t start, end;
 	start = clock();
 	times_point(G, r, S1);
@@ -211,7 +212,7 @@ void bench_timesBase()
 {
 	u32 r;
 	jacobian_point S1;
-	rand_element(r);
+	u32_rand(r);
 	clock_t start, end;
 
 	start = clock();
@@ -236,10 +237,10 @@ void test_sm2()
 	u1 msg[] = "12345671234567";
 	u1 id[] = "12345671234567";
 	//u32_new(&Da, 1, 1, 1, 1);
-	rand_element(da);
+	u32_rand(da);
 	sm2_get_public_key(da, public_key);
 
-	size_t loop = 4096;
+	size_t loop = 8192;
 	double tt1=0, tt2=0;
 
 	clock_t t1 = clock();

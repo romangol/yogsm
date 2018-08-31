@@ -71,7 +71,7 @@ void affine_to_jacobian(const affine_point & point, jacobian_point & result)
 void jacobian_to_affine(const jacobian_point & point, affine_point & result)
 {
 	u32 u, u2, u3;
-	inverse_for_multiplying_mod_p(point.z, u);
+	inv_for_mul_mod_p(point.z, u);
 	mul_mod_p(u, u, u2);
 	mul_mod_p(u2, u, u3);
 	mul_mod_p(point.x, u2, result.x);
@@ -81,13 +81,13 @@ void jacobian_to_affine(const jacobian_point & point, affine_point & result)
 void get_inversion_affine_point(const affine_point & point, affine_point & result)
 {
 	result.x = point.x;
-	inverse_for_adding_mod_p(point.y, result.y);
+	inv_for_add_mod_p(point.y, result.y);
 }
 
 bool is_affine_point_reciprocal(const affine_point & point1, const affine_point & point2)
 {
 	u32 inversion_y;
-	inverse_for_adding_mod_p(point2.y, inversion_y);
+	inv_for_add_mod_p(point2.y, inversion_y);
 	return u32_eq(point1.x, point2.x) && u32_eq(point1.y, inversion_y);
 }
 
@@ -116,7 +116,7 @@ void add_affine_point(const affine_point & point1, const affine_point & point2, 
 			// dx = 3x^2+a;
 			add_mod_p(tx2, a, dx);
 			add_mod_p(point1.y, point2.y, dy);
-			inverse_for_multiplying_mod_p(dy, dyi);
+			inv_for_mul_mod_p(dy, dyi);
 			div_mod_p(dx, dy, lambda);
 		}
 		else
@@ -143,7 +143,7 @@ void add_affine_point(const affine_point & point1, const affine_point & point2, 
 void get_inversion_jacobian_point(const jacobian_point & point, jacobian_point & result)
 {
 	result.x = point.x;
-	inverse_for_adding_mod_p(point.y, result.y);
+	inv_for_add_mod_p(point.y, result.y);
 	result.z = point.z;
 }
 
@@ -161,7 +161,7 @@ bool is_jacobian_point_reciprocal(const jacobian_point & point1, const jacobian_
 	mul_mod_p(point2.y, pz3, s2);
 
 	u32 inversion_s1;
-	inverse_for_adding_mod_p(s1, inversion_s1);
+	inv_for_add_mod_p(s1, inversion_s1);
 	return u32_eq(u1, u2) && u32_eq(inversion_s1, s2);
 }
 
@@ -354,6 +354,7 @@ void gen_tables()
 	size_t k = 0;
 	affine_to_jacobian(G, Gj);
 	powG[0] = Gj;
+
 	for (size_t i = 1; i < 256; i++)
 	{
 		//printf("gen_tables\n");

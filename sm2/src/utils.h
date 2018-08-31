@@ -4,8 +4,10 @@
 #include "dataType.h"
 #include "ecc.h"
 
-u8   llrand					();
-void rand_element			(u32 & input);
+u8   u8_rand				();
+void u32_rand				(u32 & input);
+void random_fill			(u1 * buffer, size_t len);
+void random_fill_non_zero	(u1 * buffer, size_t len);
 
 void print_u32				(const u32 & input);
 void print_affine_point		(const affine_point & point);

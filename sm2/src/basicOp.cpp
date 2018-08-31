@@ -1,8 +1,10 @@
 #include "basicOp.h"
 #include "utils.h"
+#include <immintrin.h>
+
 
 //Bits that are 0 become 1, and those that are 1 become 0.
-inline void u32_not(u32 & input)
+static inline void u32_not(u32 & input)
 {
 	input.v[0] = ~input.v[0];
 	input.v[1] = ~input.v[1];
@@ -10,7 +12,7 @@ inline void u32_not(u32 & input)
 	input.v[3] = ~input.v[3];
 }
 
-inline void u32_and(const u32 & a, const u32 & b, u32 & result)
+static inline void u32_and(const u32 & a, const u32 & b, u32 & result)
 {
 	result.v[0] = a.v[0] & b.v[0];
 	result.v[1] = a.v[1] & b.v[1];
@@ -18,7 +20,7 @@ inline void u32_and(const u32 & a, const u32 & b, u32 & result)
 	result.v[3] = a.v[3] & b.v[3];
 }
 
-inline void u32_or(const u32 & a, const u32 & b, u32 & result)
+static void u32_or(const u32 & a, const u32 & b, u32 & result)
 {
 	result.v[0] = a.v[0] | b.v[0];
 	result.v[1] = a.v[1] | b.v[1];
@@ -26,7 +28,7 @@ inline void u32_or(const u32 & a, const u32 & b, u32 & result)
 	result.v[3] = a.v[3] | b.v[3];
 }
 
-inline void u32_xor(const u32 & a, const u32 & b, u32 & result)
+static void u32_xor(const u32 & a, const u32 & b, u32 & result)
 {
 	result.v[0] = a.v[0] ^ b.v[0];
 	result.v[1] = a.v[1] ^ b.v[1];
@@ -50,45 +52,20 @@ void u32_neg(u32 & input)
 */
 bool u32_add(const u32 & a, const u32 & b, u32 & result)
 {
-	u8 isOverflow = 0;
+	u1 carry = 0;
 
-	forloop (i, 0, 4)
-	{
-		u8 r = isOverflow + a.v[i];
-		u8 s = r + b.v[i];
+	forloop(i, 0, 4)
+		carry = _addcarryx_u64(carry, a.v[i], b.v[i], result.v + i);
 
-		// if (r == 0) isOverflow = isOverflow;
-		if (r != 0)
-		{
-			if (s < r || s < b.v[i])
-				isOverflow = 1;
-			else
-				isOverflow = 0;
-		}
-	
-		result.v[i] = s;
-	}
-
-	return (isOverflow == 1);
+	return (carry == 1);
 }
 
 void u32_sub(const u32 & a, const u32 & b, u32 & result)
 {
-	bool isOverflow = true;
+	u1 carry = 1;
 
 	forloop(i, 0, 4)
-	{
-		u8 r = isOverflow + (~b.v[i]);
-		u8 s = r + a.v[i];
-		if ( r != 0 )
-		{
-			if (s < r || s < a.v[i])
-				isOverflow = 1;
-			else
-				isOverflow = 0;
-		}
-		result.v[i] = s;
-	}	
+		carry = _addcarryx_u64(carry, a.v[i], ~b.v[i], result.v + i);
 }
 
 
@@ -119,8 +96,8 @@ u1 u32_get_bit(const u32 & input, size_t pos)
 {
 	if (pos > 255)
 	{
-		printf("error pos!\n");
-		return 0;
+		puts("pos error at get_bit!");
+		return pos & 0xff;
 	}
 	return ((input.v[pos / 64] >> (pos % 64)) & 1);
 }
@@ -130,8 +107,8 @@ u1 u32_get_byte(const u32 & input, size_t pos)
 {
 	if (pos > 32)
 	{
-		printf("error pos!\n");
-		return 0;
+		puts("pos error at get_byte!");
+		return pos % 32;
 	}
 
 	return (u1)(input.v[pos / 8] >> ((pos % 8) * 8));
