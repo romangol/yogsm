@@ -9,7 +9,6 @@ void u32_neg(u32 & input)
 		carry = _addcarryx_u64(carry, ~input.v[i], 0, input.v + i);
 }
 
-
 bool u32_add(const u32 & a, const u32 & b, u32 & result)
 {
 	u1 carry = 0;
@@ -23,7 +22,6 @@ bool u32_add(const u32 & a, const u32 & b, u32 & result)
 void u32_sub(const u32 & a, const u32 & b, u32 & result)
 {
 	u1 carry = 1;
-
 	forloop(i, 0, 4)
 		carry = _addcarryx_u64(carry, a.v[i], ~b.v[i], result.v + i);
 }
@@ -110,20 +108,64 @@ bool u32_eq_one(const u32 & a)
 
 void raw_mul(const u32 & x, const u32 & y, u8 result[8])
 {
-	u8 interim[9] = { 0 };
+	u8 interim[8] = { 0 };
 
-	u1 carry = 0;
 	forloop(i, 0, 4)
 	{
+		u1 carry = 0;
 		forloop(j, 0, 4)
 		{
 			u8 h;
 			u8 l = _mulx_u64(x.v[i], y.v[j], &h);
 			carry = _addcarryx_u64(carry, interim[i + j + 0], l, interim + i + j + 0);
-			interim[i + j + 2] += _addcarryx_u64(carry, interim[i + j + 1], h, interim + i + j + 1);
-			carry = 0;
+			carry = _addcarryx_u64(carry, interim[i + j + 1], h, interim + i + j + 1);
+			size_t pos = 2 + i + j;
+			while (carry && pos < 8)
+			{
+				carry = _addcarryx_u64(carry, interim[pos], 0, interim + pos);
+				++pos;
+			}
 		}
 	}
 
 	memcpy(result, interim, 64);
+}
+
+
+void sm2p_mong_mul(const u32 & x, const u32 & y, u32 & result)
+{
+	const static u32 SM2_P = { { 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFF00000000, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFEFFFFFFFF } };
+
+	const static size_t LEN = 9;
+	u8 interim[LEN] = { 0 };
+	raw_mul(x, y, interim);
+
+	forloop (i, 0, 4)
+	{
+		u1 carry = 0;
+		u8 factor = interim[i];
+		forloop (j, 0, 4)
+		{
+			u8 h;
+			u8 l = _mulx_u64(factor, SM2_P.v[j], &h);
+			
+			carry = _addcarryx_u64(carry, interim[i + j + 0], l, interim + i + j + 0);
+			carry = _addcarryx_u64(carry, interim[i + j + 1], h, interim + i + j + 1);
+
+			size_t pos = 2 + i + j;
+			while (carry && pos < LEN)
+			{
+				carry = _addcarryx_u64(carry, interim[pos], 0, interim + pos);
+				++pos;
+			}
+		}
+	}
+
+	const static u32 rhoP = { { 0x0000000000000001, 0x00000000FFFFFFFF, 0x0000000000000000, 0x0000000100000000 } };
+	memcpy(result.v, interim + 4, 32);
+	if (interim[8] != 0)
+		u32_add(result, rhoP, result);
+
+	if (u32_gte(result, SM2_P))
+		u32_sub(result, SM2_P, result);
 }

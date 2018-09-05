@@ -2,6 +2,8 @@
 #include "utils.h"
 #include "const256.h"
 
+const static size_t BITS = 256;
+
 void mod(u32 & input, const u32 & m)
 {
 	while (u32_gte(input, m))
@@ -46,18 +48,29 @@ void sub_mod_p(const u32 & x, const u32 & y, u32 & result)
 void mul_mod_n(const u32 & x, const u32 & y, u32 & result)
 {
 	u32 tmp[2];
-	montgomery_mul(x, rhoN2, tmp[0]);
-	montgomery_mul(y, rhoN2, tmp[1]);
-	montgomery_mul(tmp[0], tmp[1], result);
-	montgomery_reduce(result);
+	montgomery_mul(x, rhoN2, tmp[0], n);
+	montgomery_mul(y, rhoN2, tmp[1], n);
+	montgomery_mul(tmp[0], tmp[1], result, n);
+	montgomery_reduce(result, n);
 }
 
+#define MONG
 void mul_mod_p(const u32 & x, const u32 & y, u32 & result)
 {
+#ifdef MONG
+	static const u32 H = { 0x200000003L, 0x2ffffffffL, 0x100000001L, 0x400000002L }; // 2 ** 512 % SM2_P;
+	u32 c;
+	sm2p_mong_mul(x, y, c);
+	sm2p_mong_mul(c, H, result);
+
+#else
 	u8 res[8];
 	raw_mul(x, y, res);
 	solinas_reduce(res, result);
+
+#endif
 }
+
 
 void div_mod_p(const u32 & x, const u32 & y, u32 & result)
 {
@@ -182,19 +195,18 @@ void inv_for_mul_mod_n(const u32 & input, u32 & result)
 	}
 }
 
-
-void montgomery_mul(const u32 & x, const u32 & y, u32 & result)
+void montgomery_mul(const u32 & x, const u32 & y, u32 & result, const u32 & m)
 {
 	u32 z = { 0,0,0,0 };
 
-	forloop(i, 0, 256)
+	forloop (i, 0, BITS)
 	{
 		if (u32_get_bit(y, i) == 1)
 			add_mod_n(z, x, z);
 
 		if (z.v[0] % 2 == 1)
 		{
-			bool overflow_flag = u32_add(z, n, z);
+			bool overflow_flag = u32_add(z, m, z);
 			u32_shr(z);
 			if (overflow_flag)
 				z.v[3] |= 0x8000000000000000;
@@ -203,25 +215,23 @@ void montgomery_mul(const u32 & x, const u32 & y, u32 & result)
 			u32_shr(z);
 	}
 
-	if (u32_gte(z, n))
-		u32_sub(z, n, result);
+	if (u32_gte(z, m))
+		u32_sub(z, m, result);
 	else
 		result = z;
 }
 
-void montgomery_reduce(u32 & result)
+void montgomery_reduce(u32 & result, const u32 & m)
 {
 	u32 t = result;
-	forloop(i, 0, 256)
+	forloop (i, 0, BITS)
 	{
 		if (t.v[0] % 2 == 1)
 		{
-			bool overflow_flag = u32_add(t, n, t);
+			bool overflow_flag = u32_add(t, m, t);
 			u32_shr(t);
 			if (overflow_flag)
-			{
 				t.v[3] |= 0x8000000000000000;
-			}
 		}
 		else
 		{

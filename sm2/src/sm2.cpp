@@ -92,7 +92,7 @@ void sm2_sign(u1 * id, size_t id_len, u1 *msg, size_t msg_len, const u32 & da, c
 	while (u32_eq_zero(s))
 	{
 		get_random_u32_in_mod_n(k);
-		//yU64x4_new(&k, 1, 0, 0, 0);
+
 		times_basepoint(k, rand_JPoint);
 		jacobian_to_affine(rand_JPoint, rand_AFPoint);
 		add_mod_n(e, rand_AFPoint.x, r);

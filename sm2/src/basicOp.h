@@ -20,6 +20,7 @@ bool u32_eq_zero	(const u32 & a);
 bool u32_eq_one		(const u32 & a);
 
 void raw_mul		(const u32 & x, const u32 & y, u8 result[8]);
+void sm2p_mong_mul	(const u32 & x, const u32 & y, u32 & result);
 
 #define forloop(i, start, end) for ( size_t (i) = (start); (i) < (end); ++(i) )
 #define forstep(i, start, end, step) for ( size_t (i) = (start); (i) < (end); (i) += (step) )

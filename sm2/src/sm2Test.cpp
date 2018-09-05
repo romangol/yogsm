@@ -4,24 +4,8 @@
 #include "utils.h"
 #include "const256.h"
 
-/*
-extern const u32 p;
-extern const u32 rhoP;
-extern const AFPoint G;
-extern const JPoint zero_jacobian;
-*/
 
-u4 lrand() 
-{
-	u4 r = 0;
-
-	for (int i = 0; i < 3; ++i)
-	{
-		r = (r << 15) | (rand() & 0x7FFF);
-	}
-
-	return r & 0xFFFFFFFFUL;
-}
+void mul_mod_sm2p(const u32 & x, const u32 & y, u32 & result);
 
 void test_raw_mul()
 {
@@ -71,8 +55,8 @@ void test_multiply()
 {
 	bool f1, f2;
 	u32 a, b;
-	u8 ra = (u8)lrand();
-	u8 rb = (u8)lrand();
+	u8 ra = u8_rand();
+	u8 rb = u8_rand();
 
 	u32 ra1 = {ra, 0, 0, 0};
 	u32 rb1 = {rb, 0, 0, 0};
@@ -102,13 +86,17 @@ void test_multiply()
 
 void bench_mul()
 {
-	u32 a, b, c;
+	u32 a, b;
 	u32_rand(a);
 	u32_rand(b);
 
 	clock_t start, end;
 	start = clock();
-	mul_mod_p(a, b, c);
+	forloop (i, 0, 1000000)
+	{
+		mul_mod_p(a, b, a);
+	}
+	
 	end = clock();
 	printf("bench_mul time=%f s\n", (double)(end - start) / CLK_TCK);
 }
@@ -281,9 +269,15 @@ int main()
 {
 	// test_raw_mul();
 	
-	bench_raw_mul();
+	// bench_raw_mul();
 
-	test_sm2();
+	// return 0 ;
+
+	bench_mul();
+
+	// test_sm2();
+
+	
 
 	/*
 	test_multiply();
@@ -296,6 +290,7 @@ int main()
 	test_add_Jacob_affine();
 
 	*/
+	
 	system("pause");
 	return 0;
 }
