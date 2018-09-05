@@ -3,38 +3,38 @@
 
 #include "fieldOp.h"
 
-struct affine_point
+struct AFPoint
 {
 	u32 x;
 	u32 y;
 };
 
-struct jacobian_point
+struct JPoint
 {
 	u32 x;
 	u32 y;
 	u32 z;
 };
 
-bool equal_to_o_affine_point				(const affine_point & point);
-bool equal_to_affine_point					(const affine_point & point1, const affine_point & point2);
-bool equal_to_o_jacobian_point				(const jacobian_point & point);
-bool equal_to_jacobian_point				(const jacobian_point & point1, const jacobian_point & point2);
-bool is_on_curve							(const affine_point & point);
-void affine_to_jacobian						(const affine_point & point, jacobian_point & result);
-void jacobian_to_affine						(const jacobian_point & point, affine_point & result);
-void get_inversion_affine_point				(const affine_point & point, affine_point & result);
-bool is_affine_point_reciprocal				(const affine_point & point1, const affine_point & point2);
-void add_affine_point						(const affine_point & point1, const affine_point & point2, affine_point & result);
-void get_inversion_jacobian_point			(const jacobian_point & point, jacobian_point & result);
-bool is_jacobian_point_reciprocal			(const jacobian_point & point1, const jacobian_point & point2);
-void add_jacobian_point_and_affine_point	(const jacobian_point & point1, const affine_point & point2, jacobian_point & result);;
-void add_jacobian_point						(const jacobian_point & point1, const jacobian_point & point2, jacobian_point & result);
-void times_point							(const affine_point & point, const u32 & times, jacobian_point & result);
-void times_basepoint						(const u32 & times, jacobian_point & result);
+bool equ_to_AFPoint_one			(const AFPoint & point);
+bool equ_to_AFPoint			(const AFPoint & point1, const AFPoint & point2);
+bool equ_to_JPoint_one			(const JPoint & point);
+bool equ_to_JPoint			(const JPoint & point1, const JPoint & point2);
+bool is_on_curve				(const AFPoint & point);
+void affine_to_jacobian			(const AFPoint & point, JPoint & result);
+void jacobian_to_affine			(const JPoint & point, AFPoint & result);
+void get_inversion_AFPoint		(const AFPoint & point, AFPoint & result);
+bool is_AFPoint_reciprocal		(const AFPoint & point1, const AFPoint & point2);
+void add_AFPoint				(const AFPoint & point1, const AFPoint & point2, AFPoint & result);
+void get_inversion_JPoint		(const JPoint & point, JPoint & result);
+bool is_JPoint_reciprocal		(const JPoint & point1, const JPoint & point2);
+void add_JPoint_and_AFPoint		(const JPoint & point1, const AFPoint & point2, JPoint & result);;
+void add_JPoint					(const JPoint & point1, const JPoint & point2, JPoint & result);
+void times_point				(const AFPoint & point, const u32 & times, JPoint & result);
+void times_basepoint			(const u32 & times, JPoint & result);
 
-size_t get_u8_bit							(u8 input, size_t i);
-size_t to_index								(const u32 & input, size_t i);
+size_t get_u8_bit				(u8 input, size_t i);
+size_t to_index					(const u32 & input, size_t i);
 void gen_tables();
 
 #endif

@@ -2,33 +2,142 @@
 #include "utils.h"
 #include "const256.h"
 
-void mod_n(u32 & input)
+void mod(u32 & input, const u32 & m)
 {
-	while (u32_gte(input, n))
+	while (u32_gte(input, m))
 	{
-		u32_sub(input, n, input);
+		u32_sub(input, m, input);
 	}
-}
-
-void inv_for_add_mod_n(const u32 & input, u32 & result)
-{
-	u32_sub(n, input, result);
 }
 
 void add_mod_n(const u32 & x, const u32 & y, u32 &result)
 {
 	if (u32_add(x, y, result)) // if it is overflowed
-		add_mod_n(rhoN, result, result);
+		u32_add(rhoN, result, result); 		// add_mod_n(rhoN, result, result);
 
 	if (u32_gte(result, n))
 		u32_sub(result, n, result);
 }
 
+void add_mod_p(const u32 & x, const u32 & y, u32 &result)
+{
+	if (u32_add(x, y, result)) // is overflow?
+		u32_add(rhoP, result, result); // 	add_mod_p(rhoP, result, result);
+
+	if (u32_gte(result, p))
+		u32_sub(result, p, result);
+}
+
+
 void sub_mod_n(const u32 & x, const u32 & y, u32 & result)
 {
 	u32 inversion_y;
-	inv_for_add_mod_n(y, inversion_y);
+	inv_for_add(y, inversion_y, n);
 	add_mod_n(x, inversion_y, result);
+}
+
+void sub_mod_p(const u32 & x, const u32 & y, u32 & result)
+{
+	u32 inversion_y;
+	inv_for_add(y, inversion_y, p);
+	add_mod_p(x, inversion_y, result);
+}
+
+void mul_mod_n(const u32 & x, const u32 & y, u32 & result)
+{
+	u32 tmp[2];
+	montgomery_mul(x, rhoN2, tmp[0]);
+	montgomery_mul(y, rhoN2, tmp[1]);
+	montgomery_mul(tmp[0], tmp[1], result);
+	montgomery_reduce(result);
+}
+
+void mul_mod_p(const u32 & x, const u32 & y, u32 & result)
+{
+	u8 res[8];
+	raw_mul(x, y, res);
+	solinas_reduce(res, result);
+}
+
+void div_mod_p(const u32 & x, const u32 & y, u32 & result)
+{
+	u32 inversion_y;
+	inv_for_mul_mod_p(y, inversion_y);
+	mul_mod_p(x, inversion_y, result);
+}
+
+void inv_for_add(const u32 & input, u32 & result, const u32 & m)
+{
+	u32_sub(m, input, result);
+}
+
+static inline bool transform(u32 & x, u32 & y, const u32 & m, bool carry)
+{
+	while (x.v[0] % 2 == 0)
+	{
+		u32_shr(x);
+
+		if (y.v[0] % 2 == 0)
+		{
+			u32_shr(y);
+		}
+		else
+		{
+			carry = u32_add(y, m, y);
+			u32_shr(y);
+			if (carry)
+			{
+				y.v[3] |= 0x8000000000000000;
+			}
+		}
+	}
+	return carry;
+}
+
+
+void inv_for_mul_mod_p(const u32 & input, u32 & result)
+{
+	if (u32_eq_zero(input))
+	{
+		result = input;
+		return;
+	}
+
+	u32 u = input;
+	u32 v = p;
+	u32 x1 = { 1, 0, 0, 0 };
+	u32 x2 = { 0, 0, 0, 0 };
+
+
+	bool overflowFlag = false;
+
+	while ((!u32_eq_one(u)) && (!u32_eq_one(v)))
+	{
+		overflowFlag = transform(u, x1, p, overflowFlag);
+		overflowFlag = transform(v, x2, p, overflowFlag);
+
+		if (u32_gte(u, v))
+		{
+			sub_mod_p(u, v, u);
+			sub_mod_p(x1, x2, x1);
+		}
+		else
+		{
+			sub_mod_p(v, u, v);
+			sub_mod_p(x2, x1, x2);
+		}
+	}
+
+	if (u32_eq_one(u))
+	{
+		mod(x1, p);
+		result = x1;
+	}
+	else
+	{
+		mod(x2, p);
+		result = x2;
+	}
 }
 
 void inv_for_mul_mod_n(const u32 & input, u32 & result)
@@ -41,47 +150,13 @@ void inv_for_mul_mod_n(const u32 & input, u32 & result)
 	u32 u = input;
 	u32 v = n;
 	u32 x1 = { 1, 0, 0, 0 };
-	u32 x2;
-	memset(&x2, 0, 32);
+	u32 x2 = { 0, 0, 0, 0 };
 
-	bool overflow_flag = false;
+	bool overflowFlag = false;
 	while ((!u32_eq_one(u)) && (!u32_eq_one(v)))
 	{
-		while (u.v[0] % 2 == 0)
-		{
-			u32_shr(u);
-			if (x1.v[0] % 2 == 0)
-			{
-				u32_shr(x1);
-			}
-			else
-			{
-				overflow_flag = u32_add(x1, n, x1);
-				u32_shr(x1);
-				if (overflow_flag)
-				{
-					x1.v[3] |= 0x8000000000000000;
-				}
-			}
-		}
-
-		while (v.v[0] % 2 == 0)
-		{
-			u32_shr(v);
-			if (x2.v[0] % 2 == 0)
-			{
-				u32_shr(x2);
-			}
-			else
-			{
-				overflow_flag = u32_add(x2, n, x2);
-				u32_shr(x2);
-				if (overflow_flag)
-				{
-					x2.v[3] |= 0x8000000000000000;
-				}
-			}
-		}
+		overflowFlag = transform(u, x1, n, overflowFlag);
+		overflowFlag = transform(v, x2, n, overflowFlag);
 
 		if (u32_gte(u, v))
 		{
@@ -97,20 +172,20 @@ void inv_for_mul_mod_n(const u32 & input, u32 & result)
 
 	if (u32_eq_one(u))
 	{
-		mod_n(x1);
+		mod(x1, n);
 		result = x1;
 	}
 	else
 	{
-		mod_n(x2);
+		mod(x2, n);
 		result = x2;
 	}
 }
 
+
 void montgomery_mul(const u32 & x, const u32 & y, u32 & result)
 {
-	u32 z;
-	memset(&z, 0, 32);
+	u32 z = { 0,0,0,0 };
 
 	forloop(i, 0, 256)
 	{
@@ -160,151 +235,8 @@ void montgomery_reduce(u32 & result)
 		result = t;
 }
 
-void mul_mod_n(const u32 & x, const u32 & y, u32 & result)
-{
-	u32 tmp[2];
-	montgomery_mul(x, rhoN2, tmp[0]);
-	montgomery_mul(y, rhoN2, tmp[1]);
-	montgomery_mul(tmp[0], tmp[1], result);
-	montgomery_reduce(result);
-}
 
-
-void mod_p(u32 & input)
-{
-	while (u32_gte(input, p))
-		u32_sub(input, p, input);
-}
-
-void inv_for_add_mod_p(const u32 & input, u32 & result)
-{
-	u32_sub(p, input, result);
-}
-
-void add_mod_p(const u32 & x, const u32 & y, u32 &result)
-{
-	if (u32_add(x, y, result)) // is overflow?
-		add_mod_p(rhoP, result, result);
-
-	if (u32_gte(result, p))
-		u32_sub(result, p, result);
-}
-
-void sub_mod_p(const u32 & x, const u32 & y, u32 & result)
-{
-	u32 inversion_y;
-	inv_for_add_mod_p(y, inversion_y);
-	add_mod_p(x, inversion_y, result);
-}
-
-void inv_for_mul_mod_p(const u32 & input, u32 & result)
-{
-	if (u32_eq_zero(input))
-	{
-		result = input;
-		return;
-	}
-
-	u32 u = input;
-	u32 v = p;
-	u32 x1 = { 1, 0, 0, 0 };
-	u32 x2;
-
-	memset(&x2, 0, 32);
-
-	bool overflowFlag = false;
-
-	while ((!u32_eq_one(u)) && (!u32_eq_one(v)))
-	{
-		while (u.v[0] % 2 == 0)
-		{
-			u32_shr(u);
-			if (x1.v[0] % 2 == 0)
-			{
-				u32_shr(x1);
-			}
-			else
-			{
-				overflowFlag = u32_add(x1, p, x1);
-				u32_shr(x1);
-				if (overflowFlag)
-				{
-					x1.v[3] |= 0x8000000000000000;
-				}
-			}
-		}
-
-		while (v.v[0] % 2 == 0)
-		{
-			u32_shr(v);
-			if (x2.v[0] % 2 == 0)
-			{
-				u32_shr(x2);
-			}
-			else
-			{
-				overflowFlag = u32_add(x2, p, x2);
-				u32_shr(x2);
-				if (overflowFlag)
-				{
-					x2.v[3] |= 0x8000000000000000;
-				}
-			}
-		}
-		if (u32_gte(u, v))
-		{
-			sub_mod_p(u, v, u);
-			sub_mod_p(x1, x2, x1);
-		}
-		else
-		{
-			sub_mod_p(v, u, v);
-			sub_mod_p(x2, x1, x2);
-		}
-	}
-
-	if (u32_eq_one(u))
-	{
-		mod_p(x1);
-		result = x1;
-	}
-	else
-	{
-		mod_p(x2);
-		result = x2;
-	}
-}
-
-void raw_mul(const u32 & x, const u32 & y, u8 result[8])
-{
-	u4 interim[16] = { 0 };
-
-	u4 * xp = (u4 *)x.v;
-	u4 * yp = (u4 *)y.v;
-
-	u8 cur = 0;
-	u8 carry = 0;
-	forloop (blocki, 0, 15)
-	{
-		cur = carry;
-		carry = 0;
-
-		for (size_t i = blocki > 7 ? blocki - 7 : 0; i <= (blocki > 7 ? 7 : blocki); i++)
-		{
-			u8 z = (u8)xp[blocki - i] * (u8)yp[i];
-			carry += (z >> 32);
-			cur += (z & 0xffffffff);
-		}
-		carry += (cur >> 32);
-		interim[blocki] = (u4)(cur);
-	}
-	interim[15] = (u4)carry;
-
-	// 将16个32位转换为8个64位
-	memcpy(result, interim, 16 * 4);
-}
-
-void reduce(u8 input[8], u32 & result)
+void solinas_reduce(u8 input[8], u32 & result)
 {
 	/* fast reduction 256bit to 128bit*/
 	/* ref: http://cacr.uwaterloo.ca/techreports/1999/corr99-39.pdf */
@@ -385,20 +317,7 @@ void reduce(u8 input[8], u32 & result)
 	result.v[1] = (u8)A[8] + (u8)A[9] + (u8)A[13] + (u8)A[14];
 
 	sub_mod_p(S, result, result);
-	if (u32_gte(result, p))
-		sub_mod_p(result, p, result);
-}
 
-void mul_mod_p(const u32 & x, const u32 & y, u32 & result)
-{
-	u8 res[8];
-	raw_mul(x, y, res);
-	reduce(res, result);
-}
-
-void div_mod_p(const u32 & x, const u32 & y, u32 & result)
-{
-	u32 inversion_y;
-	inv_for_mul_mod_p(y, inversion_y);
-	mul_mod_p(x, inversion_y, result);
+	// should the following op be removed ???
+	// if (u32_gte(result, p)) sub_mod_p(result, p, result);
 }

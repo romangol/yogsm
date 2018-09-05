@@ -2,54 +2,14 @@
 #include "utils.h"
 #include <immintrin.h>
 
-
-//Bits that are 0 become 1, and those that are 1 become 0.
-static inline void u32_not(u32 & input)
-{
-	input.v[0] = ~input.v[0];
-	input.v[1] = ~input.v[1];
-	input.v[2] = ~input.v[2];
-	input.v[3] = ~input.v[3];
-}
-
-static inline void u32_and(const u32 & a, const u32 & b, u32 & result)
-{
-	result.v[0] = a.v[0] & b.v[0];
-	result.v[1] = a.v[1] & b.v[1];
-	result.v[2] = a.v[2] & b.v[2];
-	result.v[3] = a.v[3] & b.v[3];
-}
-
-static void u32_or(const u32 & a, const u32 & b, u32 & result)
-{
-	result.v[0] = a.v[0] | b.v[0];
-	result.v[1] = a.v[1] | b.v[1];
-	result.v[2] = a.v[2] | b.v[2];
-	result.v[3] = a.v[3] | b.v[3];
-}
-
-static void u32_xor(const u32 & a, const u32 & b, u32 & result)
-{
-	result.v[0] = a.v[0] ^ b.v[0];
-	result.v[1] = a.v[1] ^ b.v[1];
-	result.v[2] = a.v[2] ^ b.v[2];
-	result.v[3] = a.v[3] ^ b.v[3];
-}
-
 void u32_neg(u32 & input)
 {
-	u8 one = 1;
+	u1 carry = 1;
 	forloop(i, 0, 4)
-	{
-		input.v[i] = ~input.v[i] + one;
-		if (input.v[i] != 0) 
-			one = 0;
-	}
+		carry = _addcarryx_u64(carry, ~input.v[i], 0, input.v + i);
 }
 
-/* 此处直接定义函数来进行OVERFLOWING_ADD操作
-* 无符号整数溢出位判断条件为：对于c = a + b，如果c < a || c < b 则已经溢出了
-*/
+
 bool u32_add(const u32 & a, const u32 & b, u32 & result)
 {
 	u1 carry = 0;
@@ -67,7 +27,6 @@ void u32_sub(const u32 & a, const u32 & b, u32 & result)
 	forloop(i, 0, 4)
 		carry = _addcarryx_u64(carry, a.v[i], ~b.v[i], result.v + i);
 }
-
 
 void u32_shl(u32 & input)
 {
@@ -114,6 +73,7 @@ u1 u32_get_byte(const u32 & input, size_t pos)
 	return (u1)(input.v[pos / 8] >> ((pos % 8) * 8));
 }
 
+// great than
 bool u32_gte(const u32 & a, const u32 & b)
 {
 	if (a.v[3] != b.v[3])
@@ -130,16 +90,40 @@ bool u32_gte(const u32 & a, const u32 & b)
 
 bool u32_eq(const u32 & a, const u32 & b)
 {
-	return (a.v[0] == b.v[0]) && (a.v[1] == b.v[1]) && (a.v[2] == b.v[2]) && (a.v[3] == b.v[3]);
+	// constant time comparison
+	return !((a.v[0] ^ b.v[0]) | (a.v[1] ^ b.v[1]) | (a.v[2] ^ b.v[2]) | (a.v[3] ^ b.v[3]));
+	// return (a.v[0] == b.v[0]) && (a.v[1] == b.v[1]) && (a.v[2] == b.v[2]) && (a.v[3] == b.v[3]);
 }
 
 
 bool u32_eq_zero(const u32 & a)
 {
-	return (a.v[0] == 0) && (a.v[1] == 0) && (a.v[2] == 0) && (a.v[3] == 0);
+	// constant time comparison
+	return !(a.v[0] | a.v[1] | a.v[2] | a.v[3]);
+	// return (a.v[0] == 0) && (a.v[1] == 0) && (a.v[2] == 0) && (a.v[3] == 0);
 }
 
 bool u32_eq_one(const u32 & a)
 {
 	return (a.v[0] == 1) && (a.v[1] == 0) && (a.v[2] == 0) && (a.v[3] == 0);
+}
+
+void raw_mul(const u32 & x, const u32 & y, u8 result[8])
+{
+	u8 interim[9] = { 0 };
+
+	u1 carry = 0;
+	forloop(i, 0, 4)
+	{
+		forloop(j, 0, 4)
+		{
+			u8 h;
+			u8 l = _mulx_u64(x.v[i], y.v[j], &h);
+			carry = _addcarryx_u64(carry, interim[i + j + 0], l, interim + i + j + 0);
+			interim[i + j + 2] += _addcarryx_u64(carry, interim[i + j + 1], h, interim + i + j + 1);
+			carry = 0;
+		}
+	}
+
+	memcpy(result, interim, 64);
 }

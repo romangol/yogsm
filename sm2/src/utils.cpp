@@ -35,13 +35,13 @@ void print_u32(const u32 & input)
 	printf("%016llX %016llX %016llX %016llX\n", input.v[3], input.v[2], input.v[1], input.v[0]);
 }
 
-void print_affine_point(const affine_point & point)
+void print_affine_point(const AFPoint & point)
 {
 	printf("%016llX %016llX %016llX %016llX\n", point.x.v[3], point.x.v[2], point.x.v[1], point.x.v[0]);
 	printf("%016llX %016llX %016llX %016llX\n", point.y.v[3], point.y.v[2], point.y.v[1], point.y.v[0]);
 }
 
-void print_jacobian_point(const jacobian_point & point)
+void print_jacobian_point(const JPoint & point)
 {
 	printf("%016llX %016llX %016llX %016llX\n", point.x.v[3], point.x.v[2], point.x.v[1], point.x.v[0]);
 	printf("%016llX %016llX %016llX %016llX\n", point.y.v[3], point.y.v[2], point.y.v[1], point.y.v[0]);

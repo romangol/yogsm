@@ -3,10 +3,6 @@
 
 #include "dataType.h"
 
-// void u32_and		(const u32 & a, const u32 & b, u32 & result);
-// void u32_or			(const u32 & a, const u32 & b, u32 & result);
-// void u32_xor		(const u32 & a, const u32 & b, u32 & result);
-
 bool u32_add		(const u32 & a, const u32 & b, u32 & result);
 void u32_sub		(const u32 & a, const u32 & b, u32 & result);
 
@@ -22,6 +18,8 @@ bool u32_gte		(const u32 & a, const u32 & b);
 bool u32_eq			(const u32 & a, const u32 & b);
 bool u32_eq_zero	(const u32 & a);
 bool u32_eq_one		(const u32 & a);
+
+void raw_mul		(const u32 & x, const u32 & y, u8 result[8]);
 
 #define forloop(i, start, end) for ( size_t (i) = (start); (i) < (end); ++(i) )
 #define forstep(i, start, end, step) for ( size_t (i) = (start); (i) < (end); (i) += (step) )

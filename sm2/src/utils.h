@@ -10,8 +10,8 @@ void random_fill			(u1 * buffer, size_t len);
 void random_fill_non_zero	(u1 * buffer, size_t len);
 
 void print_u32				(const u32 & input);
-void print_affine_point		(const affine_point & point);
-void print_jacobian_point	(const jacobian_point & point);
+void print_affine_point		(const AFPoint & point);
+void print_jacobian_point	(const JPoint & point);
 
 void u1_to_u32				(u1 input[32], u32 & result);
 void u4_to_u32				(u4 input[8], u32 & result);
