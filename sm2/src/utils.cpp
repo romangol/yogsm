@@ -30,7 +30,7 @@ uint32_t rol(const uint32_t value, const size_t bits)
 	return (value << bits) | (value >> (32 - bits));
 }
 
-#define U256_DISPLAY
+// #define U256_DISPLAY
 void print_u32(const u32 & input)
 {
 #ifdef U256_DISPLAY

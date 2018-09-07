@@ -1,13 +1,13 @@
 #include "sm2.h"
 #include <time.h>
 
-#include "const256.h"
+#include "sm2_const.h"
 
-extern const u32 a;
-extern const u32 b;
-extern const u32 n;
-extern const u32 p;
-extern const AFPoint G;
+extern const u32 SM2_a;
+extern const u32 SM2_b;
+extern const u32 SM2_N;
+extern const u32 SM2_P;
+extern const AFPoint SM2_G;
 
 
 void sm2_get_public_key(const u32 & d, AFPoint & Pubkey)
@@ -29,16 +29,16 @@ void sm2_get_id_digest(u1 *id,size_t id_len, const AFPoint & public_key, u1 resu
 	total[1] = (id_len * 8) % 256;
 	memcpy(total + 2, id, id_len);
 	//low bit...high bit, need reverse
-	memcpy(charlist, &a, 32);
+	memcpy(charlist, &SM2_a, 32);
 	str_reverse_in_place(charlist, 32);
 
-	memcpy(charlist + 32, &b, 32);
+	memcpy(charlist + 32, &SM2_b, 32);
 	str_reverse_in_place(charlist + 32, 32);
 
-	memcpy(charlist + 64, &(G.x), 32);
+	memcpy(charlist + 64, &(SM2_G.x), 32);
 	str_reverse_in_place(charlist + 64, 32);
 
-	memcpy(charlist + 96, &(G.y), 32);
+	memcpy(charlist + 96, &(SM2_G.y), 32);
 	str_reverse_in_place(charlist + 96, 32);
 
 	memcpy(charlist + 128, &(public_key.x), 32);
@@ -63,7 +63,7 @@ void sm2_get_message_digest(u1 *msg,size_t msg_len,u1 za[32],u1 result[32])
 void get_random_u32_in_mod_n(u32 & k)
 {
 	u32_rand(k);
-	mod(k, n);
+	mod(k, SM2_N);
 
 }
 void sm2_sign(u1 * id, size_t id_len, u1 *msg, size_t msg_len, const u32 & da, const AFPoint & public_key, u32 sig[2])
@@ -77,7 +77,7 @@ void sm2_sign(u1 * id, size_t id_len, u1 *msg, size_t msg_len, const u32 & da, c
 	JPoint rand_JPoint;
 	AFPoint rand_AFPoint;
 
-	if (!is_on_curve(public_key))
+	if ( !is_on_curve(public_key) )
 	{
 		printf("public key is not on the curve!");
 		return;
@@ -87,7 +87,7 @@ void sm2_sign(u1 * id, size_t id_len, u1 *msg, size_t msg_len, const u32 & da, c
 	sm2_get_message_digest(msg, msg_len, za, msg_md);
 	
 	u1_to_u32(msg_md, e);
-	mod(e, n);
+	mod(e, SM2_N);
 
 	while (u32_eq_zero(s))
 	{
@@ -134,16 +134,16 @@ bool sm2_verify(u1 *id, size_t id_len, u1 *msg, size_t msg_len, const AFPoint & 
 		return false;
 	}
 	
-	if (u32_gte(r, n) || u32_eq_zero(r))
+	if (u32_gte(r, SM2_N) || u32_eq_zero(r))
 		return false;
 
-	if (u32_gte(s, n) || u32_eq_zero(s))
+	if (u32_gte(s, SM2_N) || u32_eq_zero(s))
 		return false;
 	
 	sm2_get_id_digest(id, id_len, public_key, za);
 	sm2_get_message_digest(msg, msg_len, za, e_array);
 	u1_to_u32(e_array, e);
-	mod(e, n);
+	mod(e, SM2_N);
 
 	add_mod_n(r, s, t);
 	if (u32_eq_zero(t))
@@ -153,8 +153,8 @@ bool sm2_verify(u1 *id, size_t id_len, u1 *msg, size_t msg_len, const AFPoint & 
 	times_point(public_key, t, point1_jacobian);
 	add_JPoint(tmp1, point1_jacobian, point1_jacobian);
 	jacobian_to_affine(point1_jacobian, point1);
-	mod(e, n);
-	mod(point1.x, n);
+	mod(e, SM2_N);
+	mod(point1.x, SM2_N);
 	add_mod_n(e, point1.x, R);
 
 	return u32_eq(R, r);

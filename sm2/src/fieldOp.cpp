@@ -1,6 +1,7 @@
 #include <time.h>
 #include "utils.h"
-#include "const256.h"
+#include "sm2_const.h"
+#include <immintrin.h>
 
 const static size_t BITS = 256;
 
@@ -12,56 +13,79 @@ void mod(u32 & input, const u32 & m)
 	}
 }
 
-void add_mod_n(const u32 & x, const u32 & y, u32 &result)
+void double_mod(const u32 & x, u32 &result, const u32 & m, const u32 & rhoM)
+{
+	result = x;
+	if (u32_shl(result)) // if it is overflowed
+		u32_add(rhoM, result, result);
+
+	if (u32_gte(result, m))
+		u32_add(rhoM, result, result);
+}
+
+void add_mod(const u32 & x, const u32 & y, u32 &result, const u32 & m, const u32 & rhoM)
 {
 	if (u32_add(x, y, result)) // if it is overflowed
-		u32_add(rhoN, result, result); 		// add_mod_n(rhoN, result, result);
+		u32_add(rhoM, result, result); 		// add_mod_n(rhoN, result, result);
 
-	if (u32_gte(result, n))
-		u32_sub(result, n, result);
+	if (u32_gte(result, m))
+		u32_add(rhoM, result, result);
 }
 
-void add_mod_p(const u32 & x, const u32 & y, u32 &result)
-{
-	if (u32_add(x, y, result)) // is overflow?
-		u32_add(rhoP, result, result); // 	add_mod_p(rhoP, result, result);
-
-	if (u32_gte(result, p))
-		u32_sub(result, p, result);
-}
-
-
-void sub_mod_n(const u32 & x, const u32 & y, u32 & result)
+void sub_mod(const u32 & x, const u32 & y, u32 & result, const u32 & m, const u32 & rhoM)
 {
 	u32 inversion_y;
-	inv_for_add(y, inversion_y, n);
-	add_mod_n(x, inversion_y, result);
+	inv_for_add(y, inversion_y, m);
+	add_mod(x, inversion_y, result, m, rhoM);
 }
 
-void sub_mod_p(const u32 & x, const u32 & y, u32 & result)
-{
-	u32 inversion_y;
-	inv_for_add(y, inversion_y, p);
-	add_mod_p(x, inversion_y, result);
-}
 
 void mul_mod_n(const u32 & x, const u32 & y, u32 & result)
 {
 	u32 tmp[2];
-	montgomery_mul(x, rhoN2, tmp[0], n);
-	montgomery_mul(y, rhoN2, tmp[1], n);
-	montgomery_mul(tmp[0], tmp[1], result, n);
-	montgomery_reduce(result, n);
+	montgomery_mul(x, SM2_rhoN2, tmp[0], SM2_N);
+	montgomery_mul(y, SM2_rhoN2, tmp[1], SM2_N);
+	montgomery_mul(tmp[0], tmp[1], result, SM2_N);
+	montgomery_reduce(result, SM2_N);
 }
 
-#define MONG
+// #define MONG
+void pow_mod_p(const u32 & x, u32 & result)
+{
+#ifdef MONG
+	if (u32_eq_one(x))
+	{
+		result = x;
+		return;
+	}
+
+	sm2p_mong_pow(x, result);
+	sm2p_mong_mul(result, SM2_H, result);
+
+
+#else
+	u8 res[8];
+	raw_pow(x, res);
+	solinas_reduce(res, result);
+#endif
+}
+
 void mul_mod_p(const u32 & x, const u32 & y, u32 & result)
 {
 #ifdef MONG
-	static const u32 H = { 0x200000003L, 0x2ffffffffL, 0x100000001L, 0x400000002L }; // 2 ** 512 % SM2_P;
-	u32 c;
-	sm2p_mong_mul(x, y, c);
-	sm2p_mong_mul(c, H, result);
+	if (u32_eq_one(x))
+	{
+		result = y;
+		return;
+	}
+	if (u32_eq_one(y))
+	{
+		result = x;
+		return;
+	}
+
+	sm2p_mong_mul(x, y, result);
+	sm2p_mong_mul(result, SM2_H, result);
 
 #else
 	u8 res[8];
@@ -70,7 +94,6 @@ void mul_mod_p(const u32 & x, const u32 & y, u32 & result)
 
 #endif
 }
-
 
 void div_mod_p(const u32 & x, const u32 & y, u32 & result)
 {
@@ -108,7 +131,7 @@ static inline bool transform(u32 & x, u32 & y, const u32 & m, bool carry)
 }
 
 
-void inv_for_mul_mod_p(const u32 & input, u32 & result)
+void inv_for_mul(const u32 & input, u32 & result, const u32 & m, const u32 & rhoM)
 {
 	if (u32_eq_zero(input))
 	{
@@ -117,7 +140,7 @@ void inv_for_mul_mod_p(const u32 & input, u32 & result)
 	}
 
 	u32 u = input;
-	u32 v = p;
+	u32 v = m;
 	u32 x1 = { 1, 0, 0, 0 };
 	u32 x2 = { 0, 0, 0, 0 };
 
@@ -126,74 +149,33 @@ void inv_for_mul_mod_p(const u32 & input, u32 & result)
 
 	while ((!u32_eq_one(u)) && (!u32_eq_one(v)))
 	{
-		overflowFlag = transform(u, x1, p, overflowFlag);
-		overflowFlag = transform(v, x2, p, overflowFlag);
+		overflowFlag = transform(u, x1, m, overflowFlag);
+		overflowFlag = transform(v, x2, m, overflowFlag);
 
 		if (u32_gte(u, v))
 		{
-			sub_mod_p(u, v, u);
-			sub_mod_p(x1, x2, x1);
+			sub_mod(u, v, u, m, rhoM);
+			sub_mod(x1, x2, x1, m, rhoM);
 		}
 		else
 		{
-			sub_mod_p(v, u, v);
-			sub_mod_p(x2, x1, x2);
+			sub_mod(v, u, v, m, rhoM);
+			sub_mod(x2, x1, x2, m, rhoM);
 		}
 	}
 
 	if (u32_eq_one(u))
 	{
-		mod(x1, p);
+		mod(x1, m);
 		result = x1;
 	}
 	else
 	{
-		mod(x2, p);
+		mod(x2, m);
 		result = x2;
 	}
 }
 
-void inv_for_mul_mod_n(const u32 & input, u32 & result)
-{
-	if (u32_eq_zero(input))
-	{
-		result = input;
-		return;
-	}
-	u32 u = input;
-	u32 v = n;
-	u32 x1 = { 1, 0, 0, 0 };
-	u32 x2 = { 0, 0, 0, 0 };
-
-	bool overflowFlag = false;
-	while ((!u32_eq_one(u)) && (!u32_eq_one(v)))
-	{
-		overflowFlag = transform(u, x1, n, overflowFlag);
-		overflowFlag = transform(v, x2, n, overflowFlag);
-
-		if (u32_gte(u, v))
-		{
-			sub_mod_n(u, v, u);
-			sub_mod_n(x1, x2, x1);
-		}
-		else
-		{
-			sub_mod_n(v, u, v);
-			sub_mod_n(x2, x1, x2);
-		}
-	}
-
-	if (u32_eq_one(u))
-	{
-		mod(x1, n);
-		result = x1;
-	}
-	else
-	{
-		mod(x2, n);
-		result = x2;
-	}
-}
 
 void montgomery_mul(const u32 & x, const u32 & y, u32 & result, const u32 & m)
 {
@@ -239,8 +221,8 @@ void montgomery_reduce(u32 & result, const u32 & m)
 		}
 	}
 
-	if (u32_gte(t, n))
-		add_mod_n(t, n, result);
+	if (u32_gte(t, SM2_N))
+		add_mod_n(t, SM2_N, result);
 	else
 		result = t;
 }
@@ -259,73 +241,60 @@ void solinas_reduce(u8 input[8], u32 & result)
 	// of mantissa
 	u32 S = { input[0], input[1], input[2], input[3] };
 
-	// the following should be added twice (suffix D)
-	u32 S15D, S14D, S13D, S12D;
-	// u4 tmp15D[8] = { A[15], A[15], 0, 0, 0, A[15], 0, A[15] };
-	// u4_to_u32(tmp15D, S15D);
-	S15D.v[1] = 0;
-	S15D.v[2] = S15D.v[3] = ((u8)A[15] << 32);
-	S15D.v[0] = (S15D.v[3] | A[15]);
+	// { A[15],	A[15],	0, 0,		0, A[15],	0, A[15] };
+	// { A[14],	A[14],	0, 0,		A[14], 0,	0, A[14] };
+	// { A[13],	0,		0, A[13],	0, 0,		0, A[13] };
+	// { 0,		0,		0, 0,		0, 0,		0, A[12] };
+	// sumD = S15D + S14D + S13D + S12D
+	u32 sumD = { 0,0,0,0 };
 
-	// u4 tmp14D[8] = { A[14], A[14], 0, 0, A[14], 0, 0, A[14] };
-	// u4_to_u32(tmp14D, S14D);
-	S14D.v[1] = 0;
-	S14D.v[2] = ((u8)A[14]);
-	S14D.v[3] = ((u8)A[14] << 32);
-	S14D.v[0] = (S14D.v[3] | S14D.v[2]);
+	u1 carry = _addcarryx_u64(0, ((u8)A[15] << 32) | ((u8)A[15]), ((u8)A[14] << 32) | ((u8)A[14]), sumD.v);
+	carry += _addcarryx_u64(0, sumD.v[0], A[13], sumD.v);
+	sumD.v[1] = ((u8)A[13] << 32) + carry;
+	sumD.v[2] = ((u8)A[15] << 32) + (u8)A[14];
+	carry = _addcarryx_u64(0, (u8)A[15] << 32, (u8)A[14] << 32, sumD.v + 3);
+	if (carry) u32_add(SM2_rhoP, sumD, sumD);
+	carry = _addcarryx_u64(0, sumD.v[3], (u8)A[13] << 32, sumD.v + 3);
+	if (carry) u32_add(SM2_rhoP, sumD, sumD);
+	carry = _addcarryx_u64(0, sumD.v[3], (u8)A[12] << 32, sumD.v + 3);
+	if (carry) u32_add(SM2_rhoP, sumD, sumD);
 
-	// u4 tmp13D[8] = { A[13], 0, 0, A[13], 0, 0, 0, A[13] };
-	// u4_to_u32(tmp13D, S13D);
-	S13D.v[2] = 0;
-	S13D.v[0] = ((u8)A[13]);
-	S13D.v[1] = ((u8)A[13] << 32);
-	S13D.v[3] = S13D.v[1];
+	// A[8], A[13],		0, A[8],	A[13], A[13],	0, A[8]
+	// A[9], A[9],		0, A[14],	A[9], A[14],	A[14], A[9]
+	// A[10], A[10],	0, A[12],	A[12], A[10],	0, A[10]
+	// A[11], A[11],	0, A[11],	0, 0,			A[11], A[11]
+	// A[12], A[12],	0, A[15],	A[15], 0,		A[15], A[15]
+	if (u32_shl(sumD)) u32_add(SM2_rhoP, sumD, sumD);
+	if (u32_add(S, sumD, S)) u32_add(SM2_rhoP, S, S);
 
-	// u4 tmp12D[8] = { 0, 0, 0, 0, 0, 0, 0, A[12] };
-	// u4_to_u32(tmp12D, S12D);
-	S12D.v[0] = S12D.v[1] = S12D.v[2] = 0;
-	S12D.v[3] = ((u8)A[12] << 32);
+	carry = _addcarryx_u64(0, ((u8)A[9] << 32) | ((u8)A[9]), ((u8)A[10] << 32) | ((u8)A[10]), sumD.v);
+	carry += _addcarryx_u64(0, ((u8)A[11] << 32) | ((u8)A[11]), ((u8)A[12] << 32) | ((u8)A[12]), sumD.v + 1);
+	carry += _addcarryx_u64(0, ((u8)A[13] << 32) | ((u8)A[8]), sumD.v[1], sumD.v + 1);
+	carry += _addcarryx_u64(0, sumD.v[0], sumD.v[1], sumD.v);
 
-	// find the sum
-	u32 sum1, sum2, sumD;
-	add_mod_p(S15D, S14D, sum1);
-	add_mod_p(S13D, S12D, sum2);
-	add_mod_p(sum1, sum2, sumD);
+	carry = _addcarryx_u64(0, ((u8)A[8] << 32) | carry, ((u8)A[14] << 32), sumD.v + 1);
+	carry += _addcarryx_u64(0, (u8)A[11] << 32, (u8)A[12] << 32, sumD.v + 2);
+	carry += _addcarryx_u64(0, (u8)A[15] << 32, sumD.v[2], sumD.v + 2);
+	carry += _addcarryx_u64(0, sumD.v[1], sumD.v[2], sumD.v + 1);
+	
+	carry = _addcarryx_u64(0, (u8)A[15] + carry, ((u8)A[13] << 32) | ((u8)A[13]), sumD.v + 2);
+	carry += _addcarryx_u64(0, ((u8)A[14] << 32) | ((u8)A[9]), ((u8)A[10] << 32) | ((u8)A[12]), sumD.v + 3);
+	carry += _addcarryx_u64(0, sumD.v[2], sumD.v[3], sumD.v + 2);
 
-	// find other sum (hard coded by sight)
-	u32 S8_13, S9_14, S10_12, S11, S15_12;
-	// u4 tmp8_13[8] = { A[8], A[13], 0, A[8], A[13], A[13], 0, A[8] };
-	// u4_to_u32(tmp8_13, S8_13); 
-	S8_13.v[0] = ((u8)A[13] << 32) | A[8];
-	S8_13.v[1] = S8_13.v[3] = ((u8)A[8] << 32);
-	S8_13.v[2] = ((u8)A[13] << 32) | A[13];
+	carry = _addcarryx_u64(0, ((u8)A[8] << 32) | carry, ((u8)A[10] << 32), sumD.v + 3);
+	if (carry) u32_add(SM2_rhoP, sumD, sumD);
+	carry = _addcarryx_u64(0, sumD.v[3], ((u8)A[11] << 32) | ((u8)A[11]), sumD.v + 3);
+	if (carry) u32_add(SM2_rhoP, sumD, sumD);
+	carry = _addcarryx_u64(0, sumD.v[3], ((u8)A[15] << 32) | ((u8)A[15]), sumD.v + 3);
+	if (carry) u32_add(SM2_rhoP, sumD, sumD);
+	carry = _addcarryx_u64(0, sumD.v[3], ((u8)A[9] << 32) | ((u8)A[14]), sumD.v + 3);
+	if (carry) u32_add(SM2_rhoP, sumD, sumD);
 
-	u4 tmp9_14[8] = { A[9], A[9], 0, A[14], A[9], A[14], A[14], A[9] };
-	u4_to_u32(tmp9_14, S9_14);
-
-	u4 tmp10_12[8] = { A[10], A[10], 0, A[12], A[12], A[10], 0, A[10] };
-	u4_to_u32(tmp10_12, S10_12);
-
-	u4 tmp11[8] = { A[11], A[11], 0, A[11], 0, 0, A[11], A[11] };
-	u4_to_u32(tmp11, S11);
-
-	u4 tmp15_12[8] = { A[12], A[12], 0, A[15], A[15], 0, A[15], A[15] };
-	u4_to_u32(tmp15_12, S15_12);
-
-	// sum all the stuffs together
-	u32 sum3, sum4, sum5;
-	add_mod_p(S8_13, S9_14, sum1);
-	add_mod_p(S10_12, S11, sum2);
-	add_mod_p(sum1, sum2, sum3);
-	add_mod_p(S, sumD, sum4);
-	add_mod_p(sum4, sum3, sum5);
-	add_mod_p(S15_12, sumD, sum1);
-	add_mod_p(sum1, sum5, S);
+	if (u32_add(S, sumD, S)) u32_add(SM2_rhoP, S, S);
 
 	// find the subtrahend
 	result.v[0] = result.v[2] = result.v[3] = 0;
 	result.v[1] = (u8)A[8] + (u8)A[9] + (u8)A[13] + (u8)A[14];
-
 	sub_mod_p(S, result, result);
 
 	// should the following op be removed ???

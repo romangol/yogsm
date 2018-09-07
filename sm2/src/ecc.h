@@ -16,6 +16,8 @@ struct JPoint
 	u32 z;
 };
 
+const JPoint JPoint_ZERO = { { 1, 0, 0, 0 },{ 1, 0, 0, 0 },{ 0, 0, 0, 0 } };
+
 bool equ_to_AFPoint_one			(const AFPoint & point);
 bool equ_to_AFPoint			(const AFPoint & point1, const AFPoint & point2);
 bool equ_to_JPoint_one			(const JPoint & point);

@@ -2,10 +2,7 @@
 #include <time.h>
 #define CLK_TCK CLOCKS_PER_SEC
 #include "utils.h"
-#include "const256.h"
-
-
-void mul_mod_sm2p(const u32 & x, const u32 & y, u32 & result);
+#include "sm2_const.h"
 
 void test_raw_mul()
 {
@@ -35,6 +32,57 @@ void test_raw_mul()
 	puts("raw mul successful!\n");
 }
 
+#include <immintrin.h>
+
+void test_raw_pow()
+{
+	u32 a;
+	u32_rand(a);
+	u8 r1[8];
+	u8 r2[8];
+
+	clock_t start = clock();
+
+	forloop(i, 0, 10000000)
+	{
+		raw_pow(a, r1);
+		memcpy(a.v, r1, 32);
+	}
+	printf("raw pow time=%f s\n", (double)(clock() - start) / CLK_TCK / 1000);
+
+	start = clock();
+
+	forloop(i, 0, 10000000)
+	{
+		raw_mul(a, a, r2);
+		memcpy(a.v, r2, 32);
+	}
+	printf("raw mul time=%f s\n", (double)(clock() - start) / CLK_TCK / 1000);
+
+	u32_rand(a);
+	forloop(i, 0, 10000)
+	{
+		raw_mul(a, a, r1);
+		raw_pow(a, r2);
+		forloop(j, 0, 8)
+		{
+			if (r1[j] != r2[j])
+			{
+				printf("pos: %zd is not equal\n", j);
+				forloop(k, 0, 8)
+					printf("%016llx ", r1[7 - k]);
+				puts("");
+				forloop(k, 0, 8)
+					printf("%016llx ", r2[7 - k]);
+				puts("");
+				return;
+			}
+		}
+	}
+}
+
+
+
 void bench_raw_mul()
 {
 	u32 a, b;
@@ -61,17 +109,17 @@ void test_multiply()
 	u32 ra1 = {ra, 0, 0, 0};
 	u32 rb1 = {rb, 0, 0, 0};
 	
-	f1 = u32_add(p, ra1, a);
-	f2 = u32_add(p, rb1, b);
+	f1 = u32_add(SM2_P, ra1, a);
+	f2 = u32_add(SM2_P, rb1, b);
 	if (f1)
 	{
 		printf("OVER A\n");
-		u32_add(a, rhoP, a);
+		u32_add(a, SM2_rhoP, a);
 	}
 	if (f2)
 	{
 		printf("OVER B\n");
-		u32_add(b, rhoP, b);
+		u32_add(b, SM2_rhoP, b);
 	}
 	u32 c;
 	mul_mod_p(a, b, c);
@@ -131,10 +179,10 @@ void bench_inversion()
 void test_add_Jacob_affine()
 {
 	JPoint L, G2, S1, S2;
-	affine_to_jacobian(G, L);
+	affine_to_jacobian(SM2_G, L);
 	add_JPoint(L, L, G2);
 	add_JPoint(G2, L, S1);
-	add_JPoint_and_AFPoint(G2, G, S2);
+	add_JPoint_and_AFPoint(G2, SM2_G, S2);
 	if (equ_to_JPoint(S1, S2))
 	{
 		printf("add_Jacob_affine successful!\n");
@@ -148,10 +196,10 @@ void test_add_Jacob_affine()
 void test_zero_add_Jacob_affine()
 {
 	JPoint L, S1, S2;
-	affine_to_jacobian(G, L);
-	JPoint z = zero_jacobian;
+	affine_to_jacobian(SM2_G, L);
+	JPoint z = JPoint_ZERO;
 	add_JPoint(z, L, S1);
-	add_JPoint_and_AFPoint(z, G, S2);
+	add_JPoint_and_AFPoint(z, SM2_G, S2);
 	if (equ_to_JPoint(S1, S2)){
 		printf("zero_add_Jacob_affine successful!\n");
 	}
@@ -164,12 +212,12 @@ void test_times3()
 {
 	JPoint L, G2, S1, S2;
 
-	affine_to_jacobian(G, L);
+	affine_to_jacobian(SM2_G, L);
 	add_JPoint(L, L, G2);
 	add_JPoint(G2, L, S1);
 
 	u32 times = {3, 0, 0, 0};
-	times_point(G, times, S2);
+	times_point(SM2_G, times, S2);
 	if (equ_to_JPoint(S1, S2)){
 		printf("times3 successful!\n");
 	}
@@ -184,7 +232,7 @@ void test_BaseTimes()
 	u32 r;
 	u32_rand(r);
 	JPoint S1, S2;
-	times_point(G, r, S1);
+	times_point(SM2_G, r, S1);
 	gen_tables();
 	times_basepoint(r, S2);
 	if (equ_to_JPoint(S1, S2)){
@@ -202,7 +250,7 @@ void bench_times()
 	u32_rand(r);
 	clock_t start, end;
 	start = clock();
-	times_point(G, r, S1);
+	times_point(SM2_G, r, S1);
 	end = clock();
 	printf("bench_times time=%f s\n", (double)(end - start) / CLK_TCK);
 }
@@ -230,6 +278,10 @@ void bench_timesBase()
 
 void test_sm2()
 {
+	u32 x = SM2_P;
+	u32_neg(x);
+	print_u32(x);
+
 	u32 da, sig[2];
 	AFPoint public_key;
 	gen_tables();
@@ -267,17 +319,17 @@ void test_sm2()
 
 int main()
 {
+	// test_raw_pow();
 	// test_raw_mul();
 	
 	// bench_raw_mul();
 
 	// return 0 ;
 
-	bench_mul();
+	// bench_mul();
 
-	// test_sm2();
-
-	
+	test_sm2();
+		
 
 	/*
 	test_multiply();

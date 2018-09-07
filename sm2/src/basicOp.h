@@ -5,11 +5,9 @@
 
 bool u32_add		(const u32 & a, const u32 & b, u32 & result);
 void u32_sub		(const u32 & a, const u32 & b, u32 & result);
-
-void u32_not		(u32 & input);
-void u32_neg		(u32 & input);
-void u32_shl		(u32 & input);
+bool u32_shl		(u32 & input);
 void u32_shr		(u32 & input);
+void u32_neg		(u32 & input);
 
 u1   u32_get_bit	(const u32 & input, size_t pos);
 u1   u32_get_byte	(const u32 & input, size_t pos);
@@ -20,7 +18,12 @@ bool u32_eq_zero	(const u32 & a);
 bool u32_eq_one		(const u32 & a);
 
 void raw_mul		(const u32 & x, const u32 & y, u8 result[8]);
+void raw_pow		(const u32 & x, u8 result[8]);
+
 void sm2p_mong_mul	(const u32 & x, const u32 & y, u32 & result);
+void sm2p_mong_pow	(const u32 & x, u32 & result);
+
+
 
 #define forloop(i, start, end) for ( size_t (i) = (start); (i) < (end); ++(i) )
 #define forstep(i, start, end, step) for ( size_t (i) = (start); (i) < (end); (i) += (step) )
@@ -101,8 +104,8 @@ void sm2p_mong_mul	(const u32 & x, const u32 & y, u32 & result);
 *rotate shift left marco definition
 *
 */
-#define SHL(x,n) (((x) & 0xFFFFFFFF) << n)
-#define ROTL(x,n) (SHL((x),n) | ((x) >> (32 - n)))
+#define SHL(x,n) (((x) & 0xFFFFFFFF) << SM2_N)
+#define ROTL(x,n) (SHL((x),SM2_N) | ((x) >> (32 - SM2_N)))
 
 #define rotl(x, c) ( (x << c) | (x >> (32-c)) )
 #define rotl28(x, c) ( ( (x << c) | (x >> (28-c)) ) & 0x0FFFFFFF)
