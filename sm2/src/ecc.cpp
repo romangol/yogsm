@@ -7,6 +7,25 @@
 static AFPoint lowTable[256];
 static AFPoint highTable[256];
 
+
+static size_t get_u8_bit(u8 input, size_t i)
+{
+	return (size_t)((input >> i) & 1);
+}
+
+static size_t to_index(const u32 & input, size_t i)
+{
+	return get_u8_bit(input.v[0], i)
+		+ (get_u8_bit(input.v[0], 32 + i) << 1)
+		+ (get_u8_bit(input.v[1], i) << 2)
+		+ (get_u8_bit(input.v[1], 32 + i) << 3)
+		+ (get_u8_bit(input.v[2], i) << 4)
+		+ (get_u8_bit(input.v[2], 32 + i) << 5)
+		+ (get_u8_bit(input.v[3], i) << 6)
+		+ (get_u8_bit(input.v[3], 32 + i) << 7);
+}
+
+
 bool equ_to_AFPoint_one(const AFPoint & point)
 {
 	return u32_eq_zero(point.x) && u32_eq_zero(point.y);
@@ -76,6 +95,7 @@ void jacobian_to_affine(const JPoint & point, AFPoint & result)
 	u32 u, u2, u3;
 
 	inv_for_mul_mod_p(point.z, u);
+	pow_mod_p(u, u2);
 	mul_mod_p(u, u, u2);
 	mul_mod_p(u2, u, u3);
 
@@ -83,6 +103,7 @@ void jacobian_to_affine(const JPoint & point, AFPoint & result)
 	mul_mod_p(point.y, u3, result.y);
 }
 
+#ifdef USE_AFFINE
 void get_inversion_AFPoint(const AFPoint & point, AFPoint & result)
 {
 	result.x = point.x;
@@ -95,6 +116,7 @@ bool is_AFPoint_reciprocal(const AFPoint & point1, const AFPoint & point2)
 	inv_for_add(point2.y, inversion_y, SM2_P);
 	return u32_eq(point1.x, point2.x) && u32_eq(point1.y, inversion_y);
 }
+
 
 void add_AFPoint(const AFPoint & point1, const AFPoint & point2, AFPoint & result)
 {
@@ -147,13 +169,16 @@ void add_AFPoint(const AFPoint & point1, const AFPoint & point2, AFPoint & resul
 		result.y = Y;
 	}
 }
+#endif
 
+/*
 void get_inversion_JPoint(const JPoint & point, JPoint & result)
 {
 	result.x = point.x;
 	inv_for_add(point.y, result.y, SM2_P);
 	result.z = point.z;
 }
+
 
 bool is_JPoint_reciprocal(const JPoint & point1, const JPoint & point2)
 {
@@ -173,6 +198,7 @@ bool is_JPoint_reciprocal(const JPoint & point1, const JPoint & point2)
 
 	return u32_eq(u1, u2) && u32_eq(s1Inv, s2);
 }
+*/
 
 // Note: this function should
 // ALWAYS be called with different point
@@ -237,21 +263,21 @@ void double_JPoint(const JPoint & pt, JPoint & result)
 	u32 pz2, px2, pz4, px2_2, px2_3, lambda1, py2, py_2, py2_2, py2_4, lambda2, l2_2, py4_4, lambda3, l1l1, m1, m2;
 
 	pow_mod_p(pt.x, px2); // px2 = px^2 
-	pow_mod_p(pt.z, pz2);
 	pow_mod_p(pt.y, py2); // py2 = py^2
-
+	pow_mod_p(pt.z, pz2);
 	pow_mod_p(pz2, pz4);	// pz4 = pz^4
+
 	double_mod_p(px2, px2_2); // px2_2 = 2px^2
 	add_mod_p(px2_2, px2, px2_3); // px2_3 = 3px^2
 	mul_mod_p(SM2_a, pz4, lambda1);
 	add_mod_p(px2_3, lambda1, lambda1);
-
-	// l1 = 3*px^2+a*pz^4
+	// lambda1 = 3*px^2+a*pz^4
 
 	double_mod_p(pt.y, py_2); // py_2 = 2*py
 	double_mod_p(py2, py2_2); // py2_2 = 2*py^2
 	double_mod_p(py2_2, py2_4); // py2_4 = 4*py^2
 	mul_mod_p(py2_4, pt.x, lambda2); // l2 = 4*px*py^2
+
 	double_mod_p(lambda2, l2_2); // l2 = 2*l2
 	pow_mod_p(py2_2, py4_4); // py4_4 = 4*py^4
 	double_mod_p(py4_4, lambda3); // l3 = 8^py^4
@@ -265,7 +291,6 @@ void double_JPoint(const JPoint & pt, JPoint & result)
 
 	mul_mod_p(py_2, pt.z, result.z); // z = 2*py*pz
 }
-
 
 
 void add_JPoint(const JPoint & point1, const JPoint & point2, JPoint & result)
@@ -360,47 +385,6 @@ void add_JPoint(const JPoint & point1, const JPoint & point2, JPoint & result)
 	}
 }
 
-
-// Note: this function return A Jacob Point
-void times_point(const AFPoint & point, const u32 & times, JPoint & result)
-{
-	JPoint T = JPoint_ZERO; // should be double_JPoint(T, T);
-	const u8 l1 = 1;
-
-	for (int blocki = 3; blocki >= 0; blocki--)
-	{
-		for (int i = 63; i >= 0; i--)
-		{
-			// add_JPoint(T, T, T);
-			double_JPoint(T, T);
-
-			if ( (times.v[blocki] & (l1 << i)) != 0 ) //this place can't use 1 to replace l1
-			{	
-				add_JPoint_and_AFPoint(T, point, T);
-			}
-
-		}
-	}
-	result = T;
-}
-
-size_t get_u8_bit(u8 input, size_t i)
-{
-	return (size_t)((input >> i) & 1);
-}
-
-size_t to_index(const u32 & input, size_t i)
-{
-	return get_u8_bit(input.v[0], i)
-		+ (get_u8_bit(input.v[0], 32 + i) << 1)
-		+ (get_u8_bit(input.v[1], i) << 2)
-		+ (get_u8_bit(input.v[1], 32 + i) << 3)
-		+ (get_u8_bit(input.v[2], i) << 4)
-		+ (get_u8_bit(input.v[2], 32 + i) << 5)
-		+ (get_u8_bit(input.v[3], i) << 6)
-		+ (get_u8_bit(input.v[3], 32 + i) << 7);
-}
-
 // Speed up using Fixed-base comb
 // described in "Software Implementation of the NIST Elliptic
 // Curves Over Prime Fields" by M Brown et. al.
@@ -451,11 +435,33 @@ void times_basepoint(const u32 & times, JPoint & result)
 	for (int i = 15; i >= 0; i--)
 	{
 		double_JPoint(T, T);
-		size_t indexLow = to_index(times, i);
-		size_t indexHigh = to_index(times, i + 16);
-		add_JPoint_and_AFPoint(T, lowTable[indexLow], T);
-		add_JPoint_and_AFPoint(T, highTable[indexHigh], T);
+		add_JPoint_and_AFPoint(T, lowTable[to_index(times, i)], T);
+		add_JPoint_and_AFPoint(T, highTable[to_index(times, i + 16)], T);
 	}
 
+	result = T;
+}
+
+
+// Note: this function return A Jacob Point
+void times_point(const AFPoint & point, const u32 & times, JPoint & result)
+{
+	JPoint T = JPoint_ZERO; // should be double_JPoint(T, T);
+	const u8 l1 = 1;
+
+	for (int blocki = 3; blocki >= 0; blocki--)
+	{
+		for (int i = 63; i >= 0; i--)
+		{
+			// add_JPoint(T, T, T);
+			double_JPoint(T, T);
+
+			if ((times.v[blocki] & (l1 << i)) != 0) //this place can't use 1 to replace l1
+			{
+				add_JPoint_and_AFPoint(T, point, T);
+			}
+
+		}
+	}
 	result = T;
 }

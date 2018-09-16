@@ -39,14 +39,30 @@ void sub_mod(const u32 & x, const u32 & y, u32 & result, const u32 & m, const u3
 	add_mod(x, inversion_y, result, m, rhoM);
 }
 
-
+#define NEWMONG
 void mul_mod_n(const u32 & x, const u32 & y, u32 & result)
 {
+#ifdef NEWMONG
+	if (u32_eq_one(x))
+	{
+		result = y;
+		return;
+	}
+	if (u32_eq_one(y))
+	{
+		result = x;
+		return;
+	}
+	sm2n_mong_mul(x, y, result);
+	sm2n_mong_mul(result, SM2_NH, result);
+
+#else
 	u32 tmp[2];
 	montgomery_mul(x, SM2_rhoN2, tmp[0], SM2_N);
 	montgomery_mul(y, SM2_rhoN2, tmp[1], SM2_N);
 	montgomery_mul(tmp[0], tmp[1], result, SM2_N);
 	montgomery_reduce(result, SM2_N);
+#endif // 
 }
 
 // #define MONG
@@ -68,6 +84,19 @@ void pow_mod_p(const u32 & x, u32 & result)
 	raw_pow(x, res);
 	solinas_reduce(res, result);
 #endif
+}
+
+u32 mong_mul(const u32 & x, const u32 & y)
+{
+	if (u32_eq_one(x))
+		return y;
+	if (u32_eq_one(y))
+		return x;
+
+	u32 r;
+	// return mong_mul(x, y, sm2_p);
+
+	return r;
 }
 
 void mul_mod_p(const u32 & x, const u32 & y, u32 & result)
@@ -130,7 +159,6 @@ static inline bool transform(u32 & x, u32 & y, const u32 & m, bool carry)
 	return carry;
 }
 
-
 void inv_for_mul(const u32 & input, u32 & result, const u32 & m, const u32 & rhoM)
 {
 	if (u32_eq_zero(input))
@@ -175,58 +203,6 @@ void inv_for_mul(const u32 & input, u32 & result, const u32 & m, const u32 & rho
 		result = x2;
 	}
 }
-
-
-void montgomery_mul(const u32 & x, const u32 & y, u32 & result, const u32 & m)
-{
-	u32 z = { 0,0,0,0 };
-
-	forloop (i, 0, BITS)
-	{
-		if (u32_get_bit(y, i) == 1)
-			add_mod_n(z, x, z);
-
-		if (z.v[0] % 2 == 1)
-		{
-			bool overflow_flag = u32_add(z, m, z);
-			u32_shr(z);
-			if (overflow_flag)
-				z.v[3] |= 0x8000000000000000;
-		}
-		else
-			u32_shr(z);
-	}
-
-	if (u32_gte(z, m))
-		u32_sub(z, m, result);
-	else
-		result = z;
-}
-
-void montgomery_reduce(u32 & result, const u32 & m)
-{
-	u32 t = result;
-	forloop (i, 0, BITS)
-	{
-		if (t.v[0] % 2 == 1)
-		{
-			bool overflow_flag = u32_add(t, m, t);
-			u32_shr(t);
-			if (overflow_flag)
-				t.v[3] |= 0x8000000000000000;
-		}
-		else
-		{
-			u32_shr(t);
-		}
-	}
-
-	if (u32_gte(t, SM2_N))
-		add_mod_n(t, SM2_N, result);
-	else
-		result = t;
-}
-
 
 void solinas_reduce(u8 input[8], u32 & result)
 {
@@ -276,7 +252,7 @@ void solinas_reduce(u8 input[8], u32 & result)
 	carry += _addcarryx_u64(0, (u8)A[11] << 32, (u8)A[12] << 32, sumD.v + 2);
 	carry += _addcarryx_u64(0, (u8)A[15] << 32, sumD.v[2], sumD.v + 2);
 	carry += _addcarryx_u64(0, sumD.v[1], sumD.v[2], sumD.v + 1);
-	
+
 	carry = _addcarryx_u64(0, (u8)A[15] + carry, ((u8)A[13] << 32) | ((u8)A[13]), sumD.v + 2);
 	carry += _addcarryx_u64(0, ((u8)A[14] << 32) | ((u8)A[9]), ((u8)A[10] << 32) | ((u8)A[12]), sumD.v + 3);
 	carry += _addcarryx_u64(0, sumD.v[2], sumD.v[3], sumD.v + 2);

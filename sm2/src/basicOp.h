@@ -22,7 +22,7 @@ void raw_pow		(const u32 & x, u8 result[8]);
 
 void sm2p_mong_mul	(const u32 & x, const u32 & y, u32 & result);
 void sm2p_mong_pow	(const u32 & x, u32 & result);
-
+void sm2n_mong_mul	(const u32 & x, const u32 & y, u32 & result);
 
 
 #define forloop(i, start, end) for ( size_t (i) = (start); (i) < (end); ++(i) )

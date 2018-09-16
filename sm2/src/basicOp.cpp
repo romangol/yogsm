@@ -262,3 +262,122 @@ u1 u32_get_byte(const u32 & input, size_t pos)
 
 	return (u1)(input.v[pos / 8] >> ((pos % 8) * 8));
 }
+
+
+//#define ORI
+static void sm2n_mong_mul_core(u8 interim[9], u32 & result)
+{
+	const static size_t LEN = 9;
+#ifdef ORI
+	forloop(i, 0, 4)
+	{
+		u1 carry;
+		u8 h;
+		u8 l;
+		size_t pos;
+		u8 factor = _mulx_u64(interim[i], SM2_neg_invN, &h);
+		//t2=factor*n,t=t+t2
+		forloop(j, 0, 4)
+		{
+			carry = 0;
+			l = _mulx_u64(factor, SM2_N.v[j], &h);
+			carry = _addcarryx_u64(carry, interim[i + j + 0], l, interim + i + j + 0);
+			carry = _addcarryx_u64(carry, interim[i + j + 1], h, interim + i + j + 1);
+			size_t pos = 2 + i + j;
+			while (carry && pos < LEN)
+			{
+				carry = _addcarryx_u64(carry, interim[pos], 0, interim + pos);
+				++pos;
+			}
+		}
+
+	}
+#else
+	forloop(i, 0, 4)
+	{
+		u1 carry;
+		u8 h;
+		u8 l;
+		size_t pos;
+
+		u8 factor = _mulx_u64(interim[i], SM2_neg_invN, &h);
+		if (factor == 0)
+			continue;
+		if (factor == 1)
+		{
+			forloop(j, 0, 4)
+			{
+				carry = _addcarryx_u64(carry, interim[i + j + 0], SM2_N.v[j], interim + i + j + 0);
+				size_t pos = 1 + i + j;
+				while (carry && pos < LEN)
+				{
+					carry = _addcarryx_u64(carry, interim[pos], 0, interim + pos);
+					++pos;
+				}
+			}
+		}
+
+		carry = 0;
+		l = _mulx_u64(factor, SM2_N.v[0], &h);
+		carry = _addcarryx_u64(carry, interim[i + 0], l, interim + i + 0);
+		carry = _addcarryx_u64(carry, interim[i + 1], h, interim + i + 1);
+		pos = 2 + i;
+		while (carry && pos < LEN)
+		{
+			carry = _addcarryx_u64(carry, interim[pos], 0, interim + pos);
+			++pos;
+		}
+
+		carry = 0;
+		h = factor - 1;
+		l = ~factor + 1;
+		carry = _addcarryx_u64(carry, interim[i + 2], l, interim + i + 2);
+		carry = _addcarryx_u64(carry, interim[i + 3], h, interim + i + 3);
+		pos = 4 + i;
+		while (carry && pos < LEN)
+		{
+			carry = _addcarryx_u64(carry, interim[pos], 0, interim + pos);
+			++pos;
+		}
+
+		carry = 0;
+		l = _mulx_u64(factor, SM2_N.v[1], &h);
+		carry = _addcarryx_u64(carry, interim[i + 1], l, interim + i + 1);
+		carry = _addcarryx_u64(carry, interim[i + 2], h, interim + i + 2);
+		pos = 3 + i;
+		while (carry && pos < LEN)
+		{
+			carry = _addcarryx_u64(carry, interim[pos], 0, interim + pos);
+			++pos;
+		}
+
+		carry = 0;
+		l = _mulx_u64(factor, SM2_N.v[3], &h);
+		carry = _addcarryx_u64(carry, interim[i + 3], l, interim + i + 3);
+		carry = _addcarryx_u64(carry, interim[i + 4], h, interim + i + 4);
+		pos = 5 + i;
+		while (carry && pos < LEN)
+		{
+			carry = _addcarryx_u64(carry, interim[pos], 0, interim + pos);
+			++pos;
+		}
+	}
+#endif // ORI
+
+	memcpy(result.v, interim + 4, 32);
+
+	if (interim[8] != 0)
+		u32_add(result, SM2_rhoN, result);
+
+	if (u32_gte(result, SM2_N))
+		u32_add(result, SM2_rhoN, result);
+}
+
+
+void sm2n_mong_mul(const u32 & x, const u32 & y, u32 & result)
+{
+	u8 interim[9] = { 0 };
+	raw_mul(x, y, interim);
+
+	sm2n_mong_mul_core(interim, result);
+}

@@ -79,7 +79,7 @@ void sm2_sign(u1 * id, size_t id_len, u1 *msg, size_t msg_len, const u32 & da, c
 
 	if ( !is_on_curve(public_key) )
 	{
-		printf("public key is not on the curve!");
+		puts("public key is not on the curve!");
 		return;
 	}
 
@@ -87,7 +87,7 @@ void sm2_sign(u1 * id, size_t id_len, u1 *msg, size_t msg_len, const u32 & da, c
 	sm2_get_message_digest(msg, msg_len, za, msg_md);
 	
 	u1_to_u32(msg_md, e);
-	mod(e, SM2_N);
+	mod(e, SM2_N);  // necessary???
 
 	while (u32_eq_zero(s))
 	{
@@ -111,7 +111,6 @@ void sm2_sign(u1 * id, size_t id_len, u1 *msg, size_t msg_len, const u32 & da, c
 		mul_mod_n(r, da, k_subtract_rda);
 		sub_mod_n(k, k_subtract_rda, k_subtract_rda);
 		mul_mod_n(inversion_da_and_1, k_subtract_rda, s);
-
 	}
 
 	sig[0] = r;
@@ -143,7 +142,7 @@ bool sm2_verify(u1 *id, size_t id_len, u1 *msg, size_t msg_len, const AFPoint & 
 	sm2_get_id_digest(id, id_len, public_key, za);
 	sm2_get_message_digest(msg, msg_len, za, e_array);
 	u1_to_u32(e_array, e);
-	mod(e, SM2_N);
+	mod(e, SM2_N);  // necessary???
 
 	add_mod_n(r, s, t);
 	if (u32_eq_zero(t))
@@ -153,8 +152,8 @@ bool sm2_verify(u1 *id, size_t id_len, u1 *msg, size_t msg_len, const AFPoint & 
 	times_point(public_key, t, point1_jacobian);
 	add_JPoint(tmp1, point1_jacobian, point1_jacobian);
 	jacobian_to_affine(point1_jacobian, point1);
-	mod(e, SM2_N);
-	mod(point1.x, SM2_N);
+
+	mod(point1.x, SM2_N); // necessary???
 	add_mod_n(e, point1.x, R);
 
 	return u32_eq(R, r);

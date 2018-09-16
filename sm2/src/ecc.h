@@ -35,8 +35,6 @@ void add_JPoint					(const JPoint & point1, const JPoint & point2, JPoint & resu
 void times_point				(const AFPoint & point, const u32 & times, JPoint & result);
 void times_basepoint			(const u32 & times, JPoint & result);
 
-size_t get_u8_bit				(u8 input, size_t i);
-size_t to_index					(const u32 & input, size_t i);
 void gen_tables();
 
 #endif
