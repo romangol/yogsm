@@ -1,34 +1,33 @@
-# YogSM ÐÔÄÜ²âÊÔ±í
+# YogSM æ€§èƒ½æµ‹è¯•è¡¨
 
 ---
 
 ### SM2 Performance
 
-| ÏîÄ¿                  | CPU                   | Ïß³ÌÊý    | Sign+Verify ËÙ¶È£¨ms£©  |
-| --------              | :-----:               | :----:    |  :----:                 |
-| SM2 x64               | i7 8809 @ 3.1 GHz     | 1         | 0.680                   |
-| SM2 x64               | i7 6700 @ 3.4 GHz     | 1         | 0.646                   |
-| SM2 x64               | Ryzen3 2200 @ 3.5 GHz | 1         | 0.942                   |
-| SM2 x64               | i3 6100 @ 2.3 GHz     | 1         | 1.114                   |
-
+| é¡¹ç›®                  | CPU                   | çº¿ç¨‹æ•°    | Sign/s                   | Verify/s               |
+| --------              | :-----:               | :----:    |  :----:                 |  :----:                |
+| SM2 x64               | i7 8809 @ 3.1 GHz     | 1         | 31546                   |6373                    |
+| SM2 x64               | i5 7200U @ 2.5GHz     | 1         | 24450                   |5033                    |
+| SM2 x64               | i3 6100 @ 2.3 GHz     | 1         | 18315                   |3743                    |
+| SM2 x64               | æ ‘èŽ“æ´¾3B+              | 1         | 2913                   |828                     |
 
 ### SM4 Performance
 
-| ÏîÄ¿                  | CPU               | Ïß³ÌÊý    | ËÙ¶È£¨MBps£©      |
+| é¡¹ç›®                  | CPU               | çº¿ç¨‹æ•°    | é€Ÿåº¦ï¼ˆMBpsï¼‰      |
 | --------              | :-----:           | :----:    |  :----:           |
 | SM4Fast OpenMP        | i7 8809 @ 3.1 GHz | 16        | 640               |
 | SM4Fast OpenMP        | i7 6700 @ 3.4 GHz | 8         | 446               |
 | SM4Fast OpenMP        | i3 6100 @ 2.3 GHz | 4         | 213               |
-| SM4Fast               | Ò»¼Ó5T            | 1         | 105               |
-| SM4Fast               | ÈýÐÇS6            | 1         | 80                |
+| SM4Fast               | ä¸€åŠ 5T            | 1         | 105               |
+| SM4Fast               | ä¸‰æ˜ŸS6            | 1         | 80                |
 | SM4Fast               | Moto XT1085       | 1         | 64                |
-| SM4Fast               | Ê÷Ý®ÅÉ3B+         | 1         | 40                |
-| SM4Fast               | Ê÷Ý®ÅÉ2           | 1         | 20                |
+| SM4Fast               | æ ‘èŽ“æ´¾3B+         | 1         | 40                |
+| SM4Fast               | æ ‘èŽ“æ´¾2           | 1         | 20                |
 
 
 ### SM4 Performance
 
-| Implementation        | CPU               | Threads   | Speed£¨MBps£©    |
+| Implementation        | CPU               | Threads   | Speedï¼ˆMBpsï¼‰    |
 | --------              | :-----:           | :----:    |  :----:          |
 | SM4 Fast              | Oneplus 5T (2.45 GHz ARM64 Qualcomm Snapdragon 835) | 1         | 105              |
 | SM4 Fast              | Samsung S6 (2.1 GHz ARM64 Exynos 7420)           | 1         | 80               |
@@ -37,7 +36,7 @@
 | SM4 Fast              | Raspberry Pi 2  (900MHz ARM Cortex-A7)     | 1         | 20               |
 
 
-| Implementation        | CPU               | Threads   | Speed£¨MBps£©    |
+| Implementation        | CPU               | Threads   | Speedï¼ˆMBpsï¼‰    |
 | --------              | :-----:           | :----:    |  :----:          |
 | Crypto++ SM4/CTR      | Skylake Core-i5 2.7 GHz     | 1         | 88               |
 | sm4ni (SM4 with AES-NI)*       | Unknown Intel CPU with AES-NI     | 4         | 160.6  |
